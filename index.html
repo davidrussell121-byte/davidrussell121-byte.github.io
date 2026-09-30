@@ -229,6 +229,7 @@
     color: var(--paper);
   }
   .field select option { color: #2a2117; }
+  .field-hint { color: #8a7d6d; font-size: 14px; padding: 4px 0 8px; }
   .field select:focus, .field input:focus, .field textarea:focus {
     outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent);
   }
@@ -534,17 +535,23 @@
               <div class="field" id="qtyWrap">
                 <label for="qty">Quantity</label>
                 <select id="qty">
+                  <option value="" disabled selected>Select…</option>
                   <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+                  <option value="__other">Other — type your own…</option>
                 </select>
+                <input type="text" id="qtyOther" placeholder="Type your own quantity" inputmode="numeric" style="display:none;margin-top:8px">
               </div>
               <div class="field" id="finishWrap">
                 <label for="finish">Finish</label>
                 <select id="finish">
+                  <option value="" disabled selected>Select…</option>
                   <option>No preference</option>
                   <option>Natural</option>
                   <option>Stained</option>
                   <option>Painted</option>
+                  <option value="__other">Other — type your own…</option>
                 </select>
+                <input type="text" id="finishOther" placeholder="Type your own finish" style="display:none;margin-top:8px">
               </div>
             </div>
             <div class="field">
@@ -673,7 +680,9 @@
         return base * qty;
       },
       message: function (v, qty, finish, notes) {
-        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Storage tote rack", "Size: " + v.tier.replace(" totes", "-tote") + " rack", "Wheels: " + v.wheels];
+        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Storage tote rack"];
+        if (v.tier) lines.push("Size: " + v.tier.replace(" totes", "-tote") + " rack");
+        if (v.wheels) lines.push("Wheels: " + v.wheels);
         if (qty > 1) lines.push("Quantity: " + qty);
         if (finish !== "No preference") lines.push("Finish: " + finish);
         if (notes) lines.push("Details: " + notes);
@@ -693,7 +702,8 @@
       ],
       estimate: function () { return 85; },
       message: function (v, qty, finish, notes) {
-        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Firewood rack", "Size: " + v.size];
+        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Firewood rack"];
+        if (v.size) lines.push("Size: " + v.size);
         if (qty > 1) lines.push("Quantity: " + qty);
         if (finish !== "No preference") lines.push("Finish: " + finish);
         if (notes) lines.push("Details: " + notes);
@@ -736,7 +746,7 @@
       estimate: function () { return null; },
       from: "$50",
       message: function (v, qty, finish, notes) {
-        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: " + v.kind];
+        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: " + (v.kind || "Shelves / custom furniture piece")];
         if (v.dims) lines.push("Rough dimensions: " + v.dims);
         if (qty > 1) lines.push("Quantity: " + qty);
         if (finish !== "No preference") lines.push("Finish: " + finish);
@@ -757,7 +767,8 @@
       ],
       estimate: function (v, qty) { return 150 * qty; },
       message: function (v, qty, finish, notes) {
-        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Picnic bench", "Size: " + v.size];
+        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Picnic bench"];
+        if (v.size) lines.push("Size: " + v.size);
         if (qty > 1) lines.push("Quantity: " + qty);
         if (finish !== "No preference") lines.push("Finish: " + finish);
         if (notes) lines.push("Details: " + notes);
@@ -794,7 +805,8 @@
       ],
       estimate: function () { return null; },
       message: function (v, qty, finish, notes) {
-        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Wooden phone stand", "Style: " + v.style];
+        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: Wooden phone stand"];
+        if (v.style) lines.push("Style: " + v.style);
         if (qty > 1) lines.push("Quantity: " + qty);
         if (finish !== "No preference") lines.push("Finish: " + finish);
         if (notes) lines.push("Details: " + notes);
@@ -818,6 +830,23 @@
         lines.push("", "I can send photos of the piece. Thanks!");
         return lines.join("\n");
       }
+    },
+    custom: {
+      label: "Something else — describe it",
+      link: null,
+      estimateNote: "Quoted by text — tell me what you have in mind.",
+      fields: [
+        { id: "desc", label: "Describe what you want built", type: "text", placeholder: "e.g. custom dog crate, about 3 ft long" }
+      ],
+      estimate: function () { return null; },
+      message: function (v, qty, finish, notes) {
+        var lines = ["Hi David, I'd like a quote from your website!", "", "Product: " + (v.desc || "Something custom")];
+        if (qty > 1) lines.push("Quantity: " + qty);
+        if (finish !== "No preference") lines.push("Finish: " + finish);
+        if (notes) lines.push("Details: " + notes);
+        lines.push("", "Thanks!");
+        return lines.join("\n");
+      }
     }
   };
 
@@ -837,15 +866,37 @@
   var copyBtn = document.getElementById("copyBtn");
   var copiedNote = document.getElementById("copiedNote");
   var fieldInputs = {};
+  var fieldOtherInputs = {};
+  var qtyOtherEl = document.getElementById("qtyOther");
+  var finishOtherEl = document.getElementById("finishOther");
+
+  // An "Other — type your own…" choice in a select reveals a text input.
+  // The effective value is the typed text when "Other" is chosen.
+  function effectiveSelectValue(sel, otherEl) {
+    if (sel.value === "__other") return otherEl.value.trim();
+    return sel.value;
+  }
+  function wireOther(selectEl, otherEl) {
+    selectEl.addEventListener("change", function () {
+      var isOther = selectEl.value === "__other";
+      otherEl.style.display = isOther ? "" : "none";
+      if (!isOther) otherEl.value = "";
+    });
+  }
 
   (function populateProducts() {
+    var ph = document.createElement("option");
+    ph.value = "";
+    ph.disabled = true;
+    ph.selected = true;
+    ph.textContent = "Select…";
+    productSel.appendChild(ph);
     Object.keys(PRODUCTS).forEach(function (key) {
       var opt = document.createElement("option");
       opt.value = key;
       opt.textContent = PRODUCTS[key].label;
       productSel.appendChild(opt);
     });
-    productSel.value = "tote";
   })();
 
   function currentProduct() { return PRODUCTS[productSel.value]; }
@@ -854,19 +905,44 @@
     var p = currentProduct();
     dynFields.innerHTML = "";
     fieldInputs = {};
+    fieldOtherInputs = {};
+    if (!p) {
+      dynFields.innerHTML = '<p class="field-hint">Choose a product above to see its options.</p>';
+      qtyWrap.style.display = "none";
+      finishWrap.style.display = "none";
+      update();
+      return;
+    }
     p.fields.forEach(function (f) {
       var wrap = document.createElement("div");
       wrap.className = "field";
       var label = document.createElement("label");
       label.textContent = f.label;
       var input;
+      var otherInput;
       if (f.type === "select") {
         input = document.createElement("select");
+        var ph = document.createElement("option");
+        ph.value = "";
+        ph.disabled = true;
+        ph.selected = true;
+        ph.textContent = "Select…";
+        input.appendChild(ph);
         f.options.forEach(function (o) {
           var opt = document.createElement("option");
           opt.textContent = o;
           input.appendChild(opt);
         });
+        var otherOpt = document.createElement("option");
+        otherOpt.value = "__other";
+        otherOpt.textContent = "Other — type your own…";
+        input.appendChild(otherOpt);
+        otherInput = document.createElement("input");
+        otherInput.type = "text";
+        otherInput.placeholder = "Type your own " + f.label.toLowerCase();
+        otherInput.style.display = "none";
+        otherInput.style.marginTop = "8px";
+        fieldOtherInputs[f.id] = otherInput;
       } else {
         input = document.createElement("input");
         input.type = "text";
@@ -877,6 +953,17 @@
       input.dataset.fid = f.id;
       wrap.appendChild(label);
       wrap.appendChild(input);
+      if (otherInput) {
+        wrap.appendChild(otherInput);
+        (function (sel, other) {
+          sel.addEventListener("change", function () {
+            var isOther = sel.value === "__other";
+            other.style.display = isOther ? "" : "none";
+            if (!isOther) other.value = "";
+          });
+          other.addEventListener("input", update);
+        })(input, otherInput);
+      }
       dynFields.appendChild(wrap);
       fieldInputs[f.id] = input;
       input.addEventListener("input", update);
@@ -889,15 +976,31 @@
 
   function getValues() {
     var v = {};
-    Object.keys(fieldInputs).forEach(function (k) { v[k] = fieldInputs[k].value.trim(); });
+    Object.keys(fieldInputs).forEach(function (k) {
+      var el = fieldInputs[k];
+      var val = el.value;
+      if (el.tagName === "SELECT" && val === "__other" && fieldOtherInputs[k]) {
+        val = fieldOtherInputs[k].value;
+      }
+      v[k] = (val || "").trim();
+    });
     return v;
   }
 
   function update() {
     var p = currentProduct();
+    if (!p) {
+      estimateMain.innerHTML = "<strong>—</strong>";
+      estimateNoteEl.textContent = "Final price confirmed by text before anything is built.";
+      previewText.textContent = "Your message will appear here once you choose a product.";
+      smsBtn.href = "quote/";
+      listingLine.hidden = true;
+      copiedNote.textContent = "";
+      return;
+    }
     var v = getValues();
-    var qty = p.noQty ? 1 : parseInt(qtySel.value, 10) || 1;
-    var finish = p.noFinish ? "No preference" : finishSel.value;
+    var qty = p.noQty ? 1 : parseInt(effectiveSelectValue(qtySel, qtyOtherEl), 10) || 1;
+    var finish = p.noFinish ? "No preference" : (effectiveSelectValue(finishSel, finishOtherEl) || "No preference");
     var notes = notesEl.value.trim();
 
     var est = p.estimate(v, qty);
@@ -932,8 +1035,12 @@
   }
 
   productSel.addEventListener("change", renderFields);
+  wireOther(qtySel, qtyOtherEl);
+  wireOther(finishSel, finishOtherEl);
   qtySel.addEventListener("change", update);
   finishSel.addEventListener("change", update);
+  qtyOtherEl.addEventListener("input", update);
+  finishOtherEl.addEventListener("input", update);
   notesEl.addEventListener("input", update);
 
   copyBtn.addEventListener("click", function () {
