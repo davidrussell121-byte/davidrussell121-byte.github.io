@@ -47,7 +47,7 @@
       <input type="text" id="contact" name="contact" required autocomplete="tel" placeholder="(555) 123-4567 or you@email.com">
 
       <label for="description">Describe what you want built <span class="hint">— a few words is fine</span></label>
-      <textarea id="description" name="description" required placeholder="Example: A 4-foot firewood rack like the one on your site, but stained dark brown."></textarea>
+      <textarea id="description" name="description" required placeholder="Example: Firewood rack, Furniture restoration, etc."></textarea>
 
       <label for="photos">Add pictures <span class="hint">(optional)</span></label>
       <input type="file" id="photos" name="photos" accept="image/*" multiple>
@@ -98,13 +98,32 @@
     data.append('_template', 'table');
     data.append('_captcha', 'false');
 
+    // FormSubmit delivers at most 10 MB of attachments per submission.
+    var photos = document.getElementById('photos');
+    var totalSize = 0;
+    for (var i = 0; i < photos.files.length; i++) totalSize += photos.files[i].size;
+    if (totalSize > 10 * 1024 * 1024) {
+      status.className = 'status err';
+      status.textContent = 'Those photos add up to more than 10 MB. Please choose smaller or fewer photos and try again.';
+      btn.disabled = false;
+      btn.textContent = 'Get a quote';
+      return;
+    }
+
     fetch('https://formsubmit.co/ajax/davidrussell121@gmail.com', {
       method: 'POST',
       body: data,
       headers: { 'Accept': 'application/json' }
     })
-    .then(function (r) { return r.json(); })
-    .then(function () {
+    // FormSubmit answers HTTP 200 even when the email was NOT delivered
+    // (e.g. the address has not been activated yet), with {"success":"false"}.
+    // Only treat an explicit success:"true" as delivered.
+    .then(function (r) { return r.text().then(function (t) { return { ok: r.ok, text: t }; }); })
+    .then(function (res) {
+      var delivered = false;
+      try { delivered = res.ok && JSON.parse(res.text).success === 'true'; }
+      catch (e) { delivered = false; }
+      if (!delivered) throw new Error('not delivered');
       status.className = 'status ok';
       status.textContent = 'Got it — your quote request is on its way. I\'ll get back to you soon.';
       form.reset();
