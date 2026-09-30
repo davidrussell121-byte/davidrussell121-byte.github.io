@@ -312,7 +312,7 @@
       <a href="#restoration">Restoration</a>
       <a href="#quote">Quote</a>
       <a href="#faq">FAQ</a>
-      <a class="text-btn" href="sms:+19713755534">Text me</a>
+      <a class="text-btn" href="quote/">Get a quote</a>
     </div>
   </div>
 </nav>
@@ -562,7 +562,7 @@
               <div class="preview-text" id="previewText"></div>
               <p class="copied-note" id="copiedNote"></p>
               <div class="preview-actions">
-                <a class="btn primary small" id="smsBtn" href="sms:+19713755534">Text me this quote</a>
+                <a class="btn primary small" id="smsBtn" href="quote/">Get a quote</a>
                 <button class="btn ghost small" id="copyBtn" type="button">Copy message</button>
               </div>
               <p class="see-listing" id="listingLine"><a id="listingLink" href="#" class="see-listing">See this on Marketplace ↗</a></p>
@@ -622,7 +622,7 @@
     </div>
     <div class="contact-block">
       <p style="margin-bottom:0">Best ways to reach me — text preferred, or email anytime:</p>
-      <a class="phone-big" href="sms:+19713755534">971-375-5534</a>
+      <span class="phone-big">971-375-5534</span>
       <p class="email-line">or&nbsp;&nbsp;<a class="mail-link" href="mailto:Davidrussell121@gmail.com">Davidrussell121@gmail.com</a></p>
     </div>
     <div class="footer-bottom">
@@ -912,7 +912,15 @@
 
     var msg = p.message(v, qty, finish, notes);
     previewText.textContent = msg;
-    smsBtn.href = "sms:" + PHONE_DIGITS + "?body=" + encodeURIComponent(msg);
+    // Carry the builder's selections to the quote page so it can pre-fill them.
+    var qparams = new URLSearchParams();
+    qparams.set("item", p.label);
+    Object.keys(v).forEach(function (k) { if (v[k]) qparams.set(k, v[k]); });
+    if (qty > 1) qparams.set("qty", qty);
+    if (finish !== "No preference") qparams.set("finish", finish);
+    if (notes) qparams.set("notes", notes);
+    qparams.set("message", msg);
+    smsBtn.href = "quote/?" + qparams.toString();
     copiedNote.textContent = "";
 
     if (p.link) {
