@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get a Quote — Sweet Home Woodworks | Custom Wood Furniture, Sweet Home, Oregon</title>
+<meta name="description" content="Request a quote from Sweet Home Woodworks. Describe your custom wood furniture project, add pictures, and get a quote by email. Serving Sweet Home and Lebanon, Oregon.">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #faf9f7; color: #1c1a17; line-height: 1.6; padding: 24px 16px 64px; }
+  .wrap { max-width: 640px; margin: 0 auto; }
+  .back { display: inline-block; margin-bottom: 20px; color: #6b5d4f; text-decoration: none; font-size: 15px; }
+  .back:hover { text-decoration: underline; }
+  .card { background: #fff; border: 1px solid #e8e2d9; border-radius: 12px; padding: 32px 28px; box-shadow: 0 2px 12px rgba(0,0,0,.05); }
+  h1 { font-size: 28px; margin-bottom: 6px; color: #2a241d; }
+  .sub { color: #6b5d4f; margin-bottom: 24px; font-size: 16px; }
+  label { display: block; font-weight: 600; margin: 18px 0 6px; font-size: 15px; }
+  .hint { font-weight: 400; color: #8a7d6d; font-size: 13px; }
+  input[type=text], input[type=email], input[type=tel], textarea { width: 100%; padding: 12px 14px; border: 1px solid #d8d0c2; border-radius: 8px; font-size: 16px; font-family: inherit; background: #fffdfb; color: #1c1a17; }
+  input:focus, textarea:focus { outline: 2px solid #a08c6f; border-color: #a08c6f; }
+  textarea { min-height: 140px; resize: vertical; }
+  input[type=file] { margin-top: 4px; font-size: 15px; }
+  .file-note { font-size: 13px; color: #8a7d6d; margin-top: 4px; }
+  button { display: block; width: 100%; margin-top: 26px; padding: 15px; font-size: 18px; font-weight: 700; color: #fff; background: #3d6b35; border: none; border-radius: 8px; cursor: pointer; }
+  button:hover { background: #33592c; }
+  button:disabled { background: #9db198; cursor: wait; }
+  .status { margin-top: 18px; padding: 14px 16px; border-radius: 8px; font-size: 15px; display: none; }
+  .status.ok { display: block; background: #e8f3e5; border: 1px solid #9cc496; color: #2c5a27; }
+  .status.err { display: block; background: #fbe9e7; border: 1px solid #d89a94; color: #8c2f28; }
+  .alt { margin-top: 28px; padding-top: 22px; border-top: 1px solid #e8e2d9; text-align: center; color: #6b5d4f; font-size: 15px; }
+  .alt a { color: #3d6b35; font-weight: 700; text-decoration: none; }
+  .alt a:hover { text-decoration: underline; }
+  .hp { position: absolute; left: -9999px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="../">← Back to Sweet Home Woodworks</a>
+  <div class="card">
+    <h1>Get a Quote</h1>
+    <p class="sub">Tell me what you want built. I'll email you back with a quote.</p>
+    <form id="quoteForm" novalidate>
+      <label for="name">Your name</label>
+      <input type="text" id="name" name="name" required autocomplete="name" placeholder="Jane Doe">
+
+      <label for="contact">Phone or email <span class="hint">— so I can reach you with the quote</span></label>
+      <input type="text" id="contact" name="contact" required autocomplete="tel" placeholder="(555) 123-4567 or you@email.com">
+
+      <label for="description">Describe what you want built <span class="hint">— a few words is fine</span></label>
+      <textarea id="description" name="description" required placeholder="Example: A 4-foot firewood rack like the one on your site, but stained dark brown."></textarea>
+
+      <label for="photos">Add pictures <span class="hint">(optional)</span></label>
+      <input type="file" id="photos" name="photos" accept="image/*" multiple>
+      <div class="file-note">Photos of the space, an example you like, or anything helpful. Up to about 10&nbsp;MB total.</div>
+
+      <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off">
+
+      <button type="submit" id="submitBtn">Get a quote</button>
+      <div class="status" id="status"></div>
+    </form>
+    <div class="alt">
+      Prefer to text instead? Reach me at <a href="sms:+19713755534">971-375-5534</a>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  // Pre-fill the description from selections passed by the site's quote builder, if any.
+  var params = new URLSearchParams(window.location.search);
+  var desc = document.getElementById('description');
+  function labelize(k) {
+    return k.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+  }
+  var lines = [];
+  if (params.get('message')) {
+    desc.value = params.get('message');
+  } else {
+    params.forEach(function (v, k) {
+      if (v && v.trim() !== '') lines.push(labelize(k) + ': ' + v);
+    });
+    if (lines.length) desc.value = lines.join('\n');
+  }
+
+  var form = document.getElementById('quoteForm');
+  var btn = document.getElementById('submitBtn');
+  var status = document.getElementById('status');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    status.className = 'status';
+    status.textContent = '';
+
+    var data = new FormData(form);
+    data.append('_subject', 'New quote request — Sweet Home Woodworks');
+    data.append('_template', 'table');
+    data.append('_captcha', 'false');
+
+    fetch('https://formsubmit.co/ajax/davidrussell121@gmail.com', {
+      method: 'POST',
+      body: data,
+      headers: { 'Accept': 'application/json' }
+    })
+    .then(function (r) { return r.json(); })
+    .then(function () {
+      status.className = 'status ok';
+      status.textContent = 'Got it — your quote request is on its way. I\'ll get back to you soon.';
+      form.reset();
+      btn.disabled = false;
+      btn.textContent = 'Get a quote';
+    })
+    .catch(function () {
+      status.className = 'status err';
+      status.textContent = 'Something went wrong sending that. Please text me directly at 971-375-5534 instead.';
+      btn.disabled = false;
+      btn.textContent = 'Get a quote';
+    });
+  });
+})();
+</script>
+</body>
+</html>
