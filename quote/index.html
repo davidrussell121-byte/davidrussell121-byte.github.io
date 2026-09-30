@@ -41,16 +41,16 @@
     <p class="sub">Tell me what you want built. I'll email you back with a quote.</p>
     <form id="quoteForm" novalidate>
       <label for="name">Your name</label>
-      <input type="text" id="name" name="name" required autocomplete="name" placeholder="Jane Doe">
+      <input type="text" id="name" name="fi-sender-fullName" required autocomplete="name" placeholder="Jane Doe">
 
       <label for="contact">Phone or email <span class="hint">— so I can reach you with the quote</span></label>
-      <input type="text" id="contact" name="contact" required autocomplete="tel" placeholder="(555) 123-4567 or you@email.com">
+      <input type="text" id="contact" name="fi-text-contact" required autocomplete="tel" placeholder="(555) 123-4567 or you@email.com">
 
       <label for="description">Describe what you want built <span class="hint">— a few words is fine</span></label>
-      <textarea id="description" name="description" required placeholder="Example: Firewood rack, Furniture restoration, etc."></textarea>
+      <textarea id="description" name="fi-text-description" required placeholder="Example: Firewood rack, Furniture restoration, etc."></textarea>
 
       <label for="photos">Add pictures <span class="hint">(optional)</span></label>
-      <input type="file" id="photos" name="photos" accept="image/*" multiple>
+      <input type="file" id="photos" name="fi-file-photos[]" accept="image/*" multiple>
       <div class="file-note">Photos of the space, an example you like, or anything helpful. Up to about 10&nbsp;MB total.</div>
 
       <input type="text" name="_honey" class="hp" tabindex="-1" autocomplete="off">
@@ -94,11 +94,20 @@
     status.textContent = '';
 
     var data = new FormData(form);
-    data.append('_subject', 'New quote request — Sweet Home Woodworks');
-    data.append('_template', 'table');
-    data.append('_captcha', 'false');
+    // Spam honeypot: real visitors leave it empty. If it's filled, it's a
+    // bot — show a fake success and send nothing.
+    if (data.get('_honey')) {
+      status.className = 'status ok';
+      status.textContent = 'Got it — your quote request is on its way. I\'ll get back to you soon.';
+      form.reset();
+      btn.disabled = false;
+      btn.textContent = 'Get a quote';
+      return;
+    }
+    data.delete('_honey');
+    data.append('fi-text-site', 'Sweet Home Woodworks');
 
-    // FormSubmit delivers at most 10 MB of attachments per submission.
+    // Keep photo uploads to 10 MB total per David's requirement (Forminit allows up to 25 MB).
     var photos = document.getElementById('photos');
     var totalSize = 0;
     for (var i = 0; i < photos.files.length; i++) totalSize += photos.files[i].size;
@@ -110,18 +119,17 @@
       return;
     }
 
-    fetch('https://formsubmit.co/ajax/davidrussell121@gmail.com', {
+    fetch('https://forminit.com/f/rfv6inf8b73', {
       method: 'POST',
       body: data,
       headers: { 'Accept': 'application/json' }
     })
-    // FormSubmit answers HTTP 200 even when the email was NOT delivered
-    // (e.g. the address has not been activated yet), with {"success":"false"}.
-    // Only treat an explicit success:"true" as delivered.
+    // Forminit answers {"success":true} when the submission is accepted.
+    // Anything else means it did NOT go through — never show a false success.
     .then(function (r) { return r.text().then(function (t) { return { ok: r.ok, text: t }; }); })
     .then(function (res) {
       var delivered = false;
-      try { delivered = res.ok && JSON.parse(res.text).success === 'true'; }
+      try { delivered = res.ok && JSON.parse(res.text).success === true; }
       catch (e) { delivered = false; }
       if (!delivered) throw new Error('not delivered');
       status.className = 'status ok';
